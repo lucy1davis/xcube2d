@@ -4,6 +4,9 @@
 #include <string>
 #include <memory>
 #include <iostream>
+#include <fstream>
+#include <list>
+#include <ctype.h>
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -13,8 +16,8 @@
 #include "GameMath.h"
 
 /* ENGINE DEFAULT SETTINGS */
-static const int DEFAULT_WINDOW_WIDTH = 800;
-static const int DEFAULT_WINDOW_HEIGHT = 600;
+static const int DEFAULT_WINDOW_WIDTH = 1400;
+static const int DEFAULT_WINDOW_HEIGHT = 788;
 
 static const SDL_Color SDL_COLOR_GRAY	= { 0x80, 0x80, 0x80 };
 static const SDL_Color SDL_COLOR_YELLOW = { 0xFF, 0xFF, 0 };
@@ -140,6 +143,55 @@ class GraphicsEngine {
 		static SDL_Texture * createTextureFromSurface(SDL_Surface *);
 		static SDL_Texture * createTextureFromString(const std::string &, TTF_Font *, SDL_Color);
 };
+
+//my classes
+
+
+class Character
+{
+public:
+	std::string name;
+	std::string spriteArray[50];
+
+};
+
+class CharacterManager
+{
+public:
+	Character characterArray[100];
+	std::list <int> characterQueue;
+	std::string getName(CharacterManager& manager);
+	std::list < std::string > characterImageQueue;
+	std::string returnImageFilePath(CharacterManager& manager);
+
+};
+
+class QueueManager
+{
+public:
+	std::list<std::string> textList;
+	std::list<std::string> lineList;
+	void addDialogue(std::string text);
+	std::string getLine();
+	std::string returnDialogue();
+	std::list<std::string> wrapLines(QueueManager& dialogueQueue, int lineLimit);
+	void readTextFile(std::string filePath, QueueManager& dialogueQueue, CharacterManager& manager);
+
+};
+
+class Dialogue
+{
+public:
+	std::string text;
+	SDL_Texture* image;
+	std::string name;
+	SDL_Rect rect;
+
+	void drawDialogueImage(std::shared_ptr<GraphicsEngine> gfx, Dialogue dialogue, int x, int y, int width, int height);
+	void drawCharacterName(std::shared_ptr<GraphicsEngine> gfx, Dialogue dialogue, int x, int y);
+	void drawDialogueText(std::shared_ptr<GraphicsEngine> gfx, QueueManager dialogueQueue, int x, int y, int lineGap);
+};
+
 
 typedef GraphicsEngine GFX;
 

@@ -82,3 +82,19 @@ Point2 EventEngine::getMousePos() {
 	SDL_GetMouseState(&pos.x, &pos.y);
 	return pos;
 }
+
+bool EventEngine::MouseClick(Mouse btn)
+{
+	if (isPressed(btn))
+	{
+		mouseClicks++;
+		std::cout << mouseClicks << std::endl;
+		if (mouseClicks == 1) return true;
+	}
+	else
+	{
+		mouseClicks = 0;
+	}
+	return false;
+
+}

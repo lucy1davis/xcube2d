@@ -260,3 +260,205 @@ void GraphicsEngine::drawText(const std::string & text, const int &x, const int 
 	drawTexture(textTexture, &dst);
 	SDL_DestroyTexture(textTexture);
 }
+
+// my methods
+void Dialogue::drawDialogueText(std::shared_ptr<GraphicsEngine> gfx, QueueManager dialogueQueue, int x, int y, int lineGap)
+{
+
+	gfx->setDrawColor(SDL_COLOR_BLACK);
+	std::string line;
+	int listSize = dialogueQueue.lineList.size();
+	if (!dialogueQueue.lineList.empty())
+	{
+		for (int i = 0; i < listSize; i++)
+		{
+			line = dialogueQueue.getLine();
+			gfx->drawText(line, x, y);
+			y += lineGap;
+		}
+	}
+
+}
+
+void Dialogue::drawCharacterName(std::shared_ptr<GraphicsEngine> gfx, Dialogue dialogue, int x, int y) {
+	if (!dialogue.name.empty()) {
+		gfx->drawText(dialogue.name, x, y);
+	}
+}
+
+void Dialogue::drawDialogueImage(std::shared_ptr<GraphicsEngine> gfx, Dialogue dialogue, int x, int y, int width, int height)
+{
+
+	if (dialogue.image != nullptr)
+	{
+		rect = { x, y, width, height };
+		gfx->drawTexture(dialogue.image, &rect);
+	}
+}
+
+std::string CharacterManager::getName(CharacterManager& manager) {
+	if (!manager.characterQueue.empty()) {
+		int character = manager.characterQueue.front() - 48;
+		manager.characterQueue.pop_front();
+		std::string name = manager.characterArray[character].name;
+		return name;
+	}
+	std::cout << "Error: No character names have been queued." << std::endl;
+	return "";
+}
+
+std::string QueueManager::getLine()
+{
+	std::string text = lineList.front();
+	lineList.pop_front();
+	return text;
+}
+
+void QueueManager::addDialogue(std::string text)
+{
+	textList.push_back(text);
+}
+
+
+std::string QueueManager::returnDialogue()
+{
+	if (!textList.empty())
+	{
+		std::string text = textList.front();
+		std::cout << text << std::endl;
+		textList.pop_front();
+		return text;
+
+	}
+	else
+	{
+		std::cout << "Error: No dialogue has been queued." << std::endl;
+		return "";
+	}
+
+}
+
+std::list<std::string> QueueManager::wrapLines(QueueManager& dialogueQueue, int lineLimit)
+{
+	//Get dialogue text.
+	std::string dialogueText = dialogueQueue.returnDialogue();
+	std::cout << "text = " << dialogueText << std::endl;
+
+	//Clear line list.
+	dialogueQueue.lineList.clear();
+	//Variable used to temporariliy store characters from the dialogue.
+	std::string line;
+	line.clear();
+	int lastSpace = 0;
+
+	//Check if the dialogue is more than the lineLimit as otherwise it will be able to skip the following steps.
+	if (dialogueText.size() > lineLimit)
+	{
+		do
+		{
+			//For each character in dialogueText.
+			for (int i = 0; i < dialogueText.size(); i++)
+			{
+				//Add the character to line.
+				line += dialogueText[i];
+				//Check if the line now exceeds the lineLimit.
+				if (line.size() > lineLimit)
+				{
+					//If line exceeds the lineLimit find the last space character to find the end of the last word.
+					lastSpace = line.find_last_of(" ");
+					if (lastSpace != -1)
+					{
+						line = dialogueText.substr(0, lastSpace);
+						//Push line containing a new substring of the first character to the last space character.
+						dialogueQueue.lineList.push_back(line);
+						//Reset line variable.
+						line.clear();
+						break;
+
+					}
+				};
+			}
+			//Remove the characters already pushed as a line from the dialogueText.
+			dialogueText.erase(0, lastSpace);
+			//Do this until the dialogueText is under the lineLimit.
+		} while (dialogueText.size() > lineLimit);
+
+	}
+	//If dialogueText is still not empty push the remaining characters as a line.
+	if (!dialogueText.empty())
+	{
+		line = dialogueText;
+		dialogueQueue.lineList.push_back(line);
+	}
+	//return a list of lines to be displayed.
+	return dialogueQueue.lineList;
+}
+
+std::string CharacterManager::returnImageFilePath(CharacterManager& manager)
+{
+	std::string text;
+	Character character;
+	if (!manager.characterImageQueue.empty())
+	{
+		text = manager.characterImageQueue.front();
+		manager.characterImageQueue.pop_front();
+		character = characterArray[text[0] - 49];
+		std::cout << "image path = " << character.spriteArray[text.back() - 49] << std::endl;
+		return character.spriteArray[text.back() - 49];
+	}
+	std::cout << "Error: No images have been queued." << std::endl;
+	return "";
+}
+
+void QueueManager::readTextFile(std::string filePath, QueueManager& dialogueQueue, CharacterManager& manager)
+{
+	int breakpoint;
+	std::string text;
+	std::ifstream readFile(filePath);
+	if (!readFile.is_open()) {
+		std::cout << "Error: the text file could not be opened." << std::endl;
+	}
+	else {
+		std::cout << "reading text file." << std::endl;
+		while (getline(readFile, text)) {
+			if (text.length() > 0)
+			{
+				if (text[1] == '.')
+				{
+					//Check if the line is attempting to add a character name.
+					if (text.substr(text.find('.') + 1, 4) == "name")
+					{
+						manager.characterArray[text[0] - 49].name = text.substr(9, text.length());
+					}//Check if the line is attempting to add a character sprite/image path.
+					else if (text.substr(text.find('.') + 1, 5) == "image")
+					{
+						manager.characterArray[text[0] - 49].spriteArray[text[7] - 49] = text.substr(11, text.length());
+					}
+				}
+				else
+				{
+					breakpoint = text.find(':');
+					//Add the character speaking to a queue so that the name can be retrieved later.
+					if (isdigit(text[0] - 1)) {
+						manager.characterQueue.push_back(text[0] - 1);
+					}
+					else {
+						std::cout << "Error: index for character name is not an integer." << std::endl;
+					}
+					//Add the character image to a queue so that the image can be displayed when the character is speaking.
+					if (isdigit(text[2])) {
+						manager.characterImageQueue.push_back(text.substr(0, 3));
+					}
+					else {
+						std::cout << "Error: index for character image is not an integer." << std::endl;
+					}
+
+					//Add the line of dialogue to a queue so that the lines are displayed in the correct order.
+					dialogueQueue.addDialogue(text.substr(breakpoint + 2, text.length()));
+				}
+			}
+		}
+		readFile.close();
+		std::cout << "file closed" << std::endl;
+	}
+}
